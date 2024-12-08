@@ -29,6 +29,7 @@
 #include <linux/irq.h>
 #include <linux/uaccess.h>
 
+
 /*
  * This is used to lock changes in serial line configuration.
  */
@@ -2359,7 +2360,7 @@ uart_configure_port(struct uart_driver *drv, struct uart_state *state,
 			port->type = PORT_UNKNOWN;
 			flags |= UART_CONFIG_TYPE;
 		}
-		port->ops->config_port(port, flags);
+		port->ops->config_port(port, flags); // ulite_config_port(0
 	}
 
 	if (port->type != PORT_UNKNOWN) {

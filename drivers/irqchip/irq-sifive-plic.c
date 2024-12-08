@@ -361,8 +361,10 @@ static int __init plic_init(struct device_node *node,
 			priv->regs + ENABLE_BASE + i * ENABLE_PER_HART;
 		handler->priv = priv;
 done:
-		for (hwirq = 1; hwirq <= nr_irqs; hwirq++)
+		for (hwirq = 1; hwirq <= nr_irqs; hwirq++) {
+            //pr_info("plic_toggle(%px, %d)\n", handler, hwirq);
 			plic_toggle(handler, hwirq, 0);
+        }
 		nr_handlers++;
 	}
 

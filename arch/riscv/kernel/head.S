@@ -17,6 +17,84 @@
 #include <asm/image.h>
 #include "efi-header.S"
 
+.macro print_hex64 num, reg
+    # Load base address
+    li s6, 0x80000000   # base address
+
+    # Print tens digit of number (0~99)
+    li s7, \num
+    li s8, 10          # Divisor for tens place
+    divu s9, s7, s8    # s9 = num / 10 (tens place)
+    addi s9, s9, 0x30  # Convert to ASCII
+
+    # Wait loop for tens digit
+1:  lb s11, 0x0(s6)    # Load word from stat
+    andi s11, s11, 0x1  # Check if THR is empty (bit 5)
+    bnez s11, 1b        # If not empty, loop back
+
+    sb s9, 0x1(s6)        # Store tens digit to fifo (byte)
+
+    # Print ones digit of number
+    remu s9, s7, s8     # s9 = num % 10 (ones place)
+    addi s9, s9, 0x30   # Convert to ASCII
+
+    # Wait loop for ones digit
+2:  lb s11, 0x0(s6)    # Load word from stat
+    andi s11, s11, 0x1  # Check if THR is empty (bit 5)
+    bnez s11, 2b        # If not empty, loop back
+
+    sb s9, 0x1(s6)        # Store ones digit to fifo (byte)
+
+    # Wait loop for colon
+3:  lb s11, 0x0(s6)    # Load word from stat
+    andi s11, s11, 0x1  # Check if THR is empty (bit 5)
+    bnez s11, 3b        # If not empty, loop back
+
+    li s9, 0x3A         # ':' ASCII code
+    sb s9, 0x1(s6)        # Store colon to fifo (byte)
+
+    # Print hex value
+    mv s7, \reg         # Copy input register to s7
+    li s8, 16           # Counter for 16 hex digits
+
+4:  # Outer loop for each hex digit
+    srli s9, s7, 60     # Shift to get the most significant 4 bits
+
+    # Convert to ASCII
+    li s10, 10
+    blt s9, s10, 5f
+    addi s9, s9, 0x37   # 'A'-10 = 0x37
+    j 6f
+5:  addi s9, s9, 0x30   # '0' = 0x30
+
+6:  # Wait loop for hex char
+    lb s11, 0x0(s6)    # Load word from stat
+    andi s11, s11, 0x1  # Check if THR is empty (bit 5)
+    bnez s11, 6b        # If not empty, loop back
+
+    # Write character to FIFO
+    sb s9, 0x1(s6)        # Store ASCII character to fifo (byte)
+    slli s7, s7, 4      # Shift left by 4 bits for next digit
+    addi s8, s8, -1     # Decrement counter
+    bnez s8, 4b         # If counter not zero, continue to next digit
+
+    # Add newline character
+7:  lb s11, 0x0(s6)    # Load word from stat
+    andi s11, s11, 0x1  # Check if THR is empty (bit 5)
+    bnez s11, 7b        # If not empty, loop back
+
+    li s9, 0x0A         # Load newline character (0x0A = '\n')
+    sb s9, 0x1(s6)        # Store newline character to fifo (byte)
+
+    # Add carriage return
+8:  lb s11, 0x0(s6)    # Load word from stat
+    andi s11, s11, 0x1  # Check if THR is empty (bit 5)
+    bnez s11, 8b        # If not empty, loop back
+
+    li s9, 0x0D         # Load carriage return (0x0D = '\r')
+    sb s9, 0x1(s6)        # Store carriage return to fifo (byte)
+.endm
+
 __HEAD
 ENTRY(_start)
 	/*
